@@ -22,7 +22,7 @@ class EmployeeController extends Controller
      */
     public function index()
     {
-        $employees = Employee::all();
+        $employees = Employee::get();
         return view('employees.index', ['employees' => $employees]);
     }
 
@@ -79,6 +79,12 @@ class EmployeeController extends Controller
     {
         $employee = Employee::whereId($id)->first();
         $head = $employee->employees()->first();
+        if($employee->id == 1){
+            $headId = null;
+        }
+        else{
+            $headId = $head->id;
+        }
 
         return view('employees.edit', [
             'photo' => $employee->photo,
@@ -89,7 +95,7 @@ class EmployeeController extends Controller
             'phone' => $employee->phone_number,
             'email' => $employee->email,
             'salary' => $employee->salary,
-            'head' => Employee::whereId($head->id)->first(),
+            'head' => ($employee->id != 1) ? Employee::whereId($headId)->first() : Employee::whereId(1)->first(),
             'id'   => $id,
             'created_at' => $employee->created_at->format('d.m.y'),
             'updated_at' => $employee->updated_at->format('d.m.y'),
@@ -109,23 +115,27 @@ class EmployeeController extends Controller
     public function update(Request $request, $employeeId, StoreImageService $imageService, CheckHierarchyService $checkHierarchyService, EmployeeSubordinatesService $employeeSubordinatesService, Faker $faker)
     {
         $employee = Employee::whereId($employeeId)->first();
-        $oldHead = $employee->employees()->first();
 
-        $newHead = Employee::where('name', $request->head)->first();
-        $headLevel = $checkHierarchyService->make($newHead);
+        if ($employee->id != 1) {
+            $oldHead = $employee->employees()->first();
 
-        $employeeHeadLevel = $checkHierarchyService->make($employee);
+            $newHead = Employee::where('name', $request->head)->first();
+            $headLevel = $checkHierarchyService->make($newHead);
 
-        $employeeLevel = ($employeeHeadLevel) + $employeeSubordinatesService->make($employee);
+            $employeeHeadLevel = $checkHierarchyService->make($employee);
 
-        $employeeHierarchy = $employeeLevel - $employeeHeadLevel;
+            $employeeLevel = ($employeeHeadLevel) + $employeeSubordinatesService->make($employee);
 
-        if($headLevel + $employeeHierarchy < 5) {
-            $oldHead->heads()->detach($employeeId);
-            $newHead->heads()->attach($employeeId);
-        } else {
-            return back()->with('status', 'Choose another head! Invalid level of subordinates . Max level equals 5 !')->withInput($request->all());
+            $employeeHierarchy = $employeeLevel - $employeeHeadLevel;
+
+            if($headLevel + $employeeHierarchy < 5) {
+                $oldHead->heads()->detach($employeeId);
+                $newHead->heads()->attach($employeeId);
+            } else {
+                return back()->with('status', 'Choose another head! Invalid level of subordinates . Max level equals 5 !')->withInput($request->all());
+            }
         }
+
 
         $employee->update([
             'name' => $request->name,

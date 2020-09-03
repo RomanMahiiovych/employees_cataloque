@@ -25,7 +25,7 @@ class EmployeeHeadSeeder extends Seeder
         $heads = collect([]);
         $n = 1;
         $thousand = 0;
-        $round = 20;
+        $round = 100;
 
         for ($i = 1; $i <= 5; $i++){
 
